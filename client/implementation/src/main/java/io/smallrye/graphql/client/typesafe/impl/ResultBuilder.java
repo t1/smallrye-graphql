@@ -58,14 +58,14 @@ public class ResultBuilder {
         JsonArray jsonErrors = response.getJsonArray("errors");
         if (jsonErrors == null)
             return;
-        JsonArray unapplied = jsonErrors.stream().filter(error -> !apply(error)).collect(toJsonArray());
+        JsonArray unapplied = jsonErrors.stream().filter(error -> !mapToErrorOr(error)).collect(toJsonArray());
         if (unapplied.isEmpty())
             return;
         throw new GraphQlClientException("errors from service",
                 unapplied.stream().map(this::convert).collect(Collectors.toList()));
     }
 
-    private boolean apply(JsonValue error) {
+    private boolean mapToErrorOr(JsonValue error) {
         List<Object> path = getPath(error);
         if (path == null)
             return false;
@@ -73,7 +73,7 @@ public class ResultBuilder {
         JsonArrayBuilder errors = Json.createArrayBuilder();
         if (pointer.containsValue(data) && isListOf(pointer.getValue(data), ErrorOr.class.getSimpleName()))
             pointer.getValue(data).asJsonArray().forEach(errors::add);
-        errors.add(ERROR_MARK.apply((JsonObject) error));
+        errors.add(SET_TYPENAME_TO_ERROR_OR.apply((JsonObject) error));
         this.data = pointer.replace(data, errors.build());
         return true;
     }
@@ -122,6 +122,7 @@ public class ResultBuilder {
         return (jsonArray == null) ? null : jsonArray.stream().map(JsonUtils::toValue).collect(Collectors.toList());
     }
 
-    private static final JsonPatch ERROR_MARK = Json.createPatchBuilder().add("/__typename", ErrorOr.class.getSimpleName())
+    private static final JsonPatch SET_TYPENAME_TO_ERROR_OR = Json.createPatchBuilder()
+            .add("/__typename", ErrorOr.class.getSimpleName())
             .build();
 }

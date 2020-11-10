@@ -204,6 +204,38 @@ class ErrorBehavior {
     }
 
     @Test
+    void shouldFetchErrorOrAbsentWithTypename() {
+        fixture.returns(Response.ok("{" +
+                "\"data\":{\"teams\":null}," +
+                "\"errors\":[{" +
+                /**/"\"__typename\":\"OtherType\"," +
+                /**/"\"message\":\"currently can't search for teams\"," +
+                /**/"\"locations\":[{\"line\":1,\"column\":2,\"sourceName\":\"loc\"}]," +
+                /**/"\"path\": [\"teams\"],\n" +
+                /**/"\"extensions\":{" +
+                /**//**/"\"description\":\"Field 'foo' in type 'Query' is undefined\"," +
+                /**//**/"\"validationErrorType\":\"FieldUndefined\"," +
+                /**//**/"\"queryPath\":[\"foo\"]," +
+                /**//**/"\"classification\":\"ValidationError\"," +
+                /**//**/"\"code\":\"team-search-disabled\"}" +
+                "}]}}"));
+        SuperHeroApi api = fixture.build(SuperHeroApi.class);
+
+        ErrorOr<List<Team>> response = api.teams();
+
+        then(fixture.query()).isEqualTo("query teams { teams {name} }");
+        then(response.isError()).isTrue();
+        then(response.isPresent()).isFalse();
+        then(catchThrowable(response::get)).isInstanceOf(NoSuchElementException.class);
+        then(response.getErrors()).hasSize(1);
+        GraphQlClientError error = response.getErrors().get(0);
+        then(error.getMessage()).isEqualTo("currently can't search for teams");
+        then(error.getPath()).containsExactly("teams");
+        then(error.getLocations()).containsExactly(new SourceLocation(1, 2, "loc"));
+        then(error.getErrorCode()).isEqualTo("team-search-disabled");
+    }
+
+    @Test
     void shouldFetchErrorOrWithTwoErrors() {
         fixture.returns(Response.ok("{" +
                 "\"data\":{\"teams\":null}," +
