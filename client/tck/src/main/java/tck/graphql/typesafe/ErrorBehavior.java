@@ -8,9 +8,6 @@ import static org.assertj.core.api.BDDAssertions.then;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.ResponseBuilder;
-
 import org.eclipse.microprofile.graphql.Name;
 import org.junit.jupiter.api.Test;
 
@@ -532,7 +529,7 @@ class ErrorBehavior {
         then(error.getErrorCode()).isEqualTo("team-search-disabled");
     }
 
-    @GraphQlClientApi
+    @GraphQLClientApi
     interface DeepErrorApi {
         OuterContainer outer();
     }
@@ -543,6 +540,16 @@ class ErrorBehavior {
 
     static class InnerContainer {
         String content;
+    }
+
+    @Test
+    void shouldCallDeeplyNested() {
+        fixture.returnsData("'outer':{'inner':{'content':'foo'}}");
+        DeepErrorApi api = fixture.build(DeepErrorApi.class);
+
+        OuterContainer outer = api.outer();
+
+        then(outer.inner.content).isEqualTo("foo");
     }
 
     @Test
@@ -575,26 +582,26 @@ class ErrorBehavior {
         thenDeeplyNestedErrorException(throwable);
     }
 
-    private ResponseBuilder deeplyNestedError(String data) {
-        return Response.ok("{" +
+    private String deeplyNestedError(String data) {
+        return "{" +
                 "\"data\":" + data + "," +
                 "\"errors\":[{" +
                 /**/"\"message\":\"dummy message\"," +
                 /**/"\"locations\":[{\"line\":1,\"column\":2,\"sourceName\":\"loc\"}]," +
                 /**/"\"path\": [\"outer\",\"inner\",\"content\"],\n" +
                 /**/"\"extensions\":{\"code\":\"dummy-code\"}" +
-                "}]}}");
+                "}]}}";
     }
 
     private void thenDeeplyNestedErrorException(Throwable throwable) {
-        then(throwable).isInstanceOf(GraphQlClientException.class)
+        then(throwable).isInstanceOf(GraphQLClientException.class)
                 .hasMessage("errors from service")
                 .hasToString("GraphQlClientException: errors from service\n" +
                         "errors:\n" +
                         "- dummy-code: [outer, inner, content] dummy message [(1:2@loc)] {code=dummy-code})");
-        List<GraphQlClientError> errors = ((GraphQlClientException) throwable).getErrors();
+        List<GraphQLClientError> errors = ((GraphQLClientException) throwable).getErrors();
         then(errors).hasSize(1);
-        GraphQlClientError error = errors.get(0);
+        GraphQLClientError error = errors.get(0);
         then(error.getMessage()).isEqualTo("dummy message");
         then(error.getPath()).containsExactly("outer", "inner", "content");
         then(error.getLocations()).containsExactly(new SourceLocation(1, 2, "loc"));

@@ -4,6 +4,7 @@ import static javax.ws.rs.core.MediaType.TEXT_PLAIN_TYPE;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.atMost;
 import static org.mockito.Mockito.verify;
 
 import java.io.StringReader;
@@ -99,14 +100,23 @@ public class JaxRsTypesafeGraphQLClientFixture implements TypesafeGraphQLClientF
         return entitySent().getEntity().getString("query").replace('\"', '\'');
     }
 
+    @Override
+    public boolean sent() {
+        return entitySent().getEntity() != null;
+    }
+
     private Entity<JsonObject> entitySent() {
         if (entitySent == null) {
             @SuppressWarnings("unchecked")
             ArgumentCaptor<Entity<String>> captor = ArgumentCaptor.forClass(Entity.class);
-            then(mockInvocationBuilder).should().post(captor.capture());
-            Entity<String> stringEntity = captor.getValue();
-            JsonObject jsonObject = Json.createReader(new StringReader(stringEntity.getEntity())).readObject();
-            entitySent = Entity.entity(jsonObject, stringEntity.getMediaType());
+            then(mockInvocationBuilder).should(atMost(1)).post(captor.capture());
+            if (captor.getAllValues().isEmpty()) {
+                entitySent = Entity.json(null);
+            } else {
+                Entity<String> stringEntity = captor.getValue();
+                JsonObject jsonObject = Json.createReader(new StringReader(stringEntity.getEntity())).readObject();
+                entitySent = Entity.entity(jsonObject, stringEntity.getMediaType());
+            }
         }
         return entitySent;
     }

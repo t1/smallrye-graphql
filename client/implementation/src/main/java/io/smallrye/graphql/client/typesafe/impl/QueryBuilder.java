@@ -72,11 +72,12 @@ public class QueryBuilder {
         if (type.isCollection())
             return fields(type.getItemType());
         return type.fields()
-                .map(this::field)
+                .filter(FieldInfo::isOutput)
+                .map(this::fieldName)
                 .collect(joining(" ", " {", "}"));
     }
 
-    private String field(FieldInfo field) {
+    private String fieldName(FieldInfo field) {
         TypeInfo type = field.getType();
         StringBuilder expression = new StringBuilder();
         field.getAlias().ifPresent(alias -> expression.append(alias).append(":"));

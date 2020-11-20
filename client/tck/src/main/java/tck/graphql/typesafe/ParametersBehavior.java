@@ -1,6 +1,7 @@
 package tck.graphql.typesafe;
 
 import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.BDDAssertions.then;
 
 import java.util.ArrayDeque;
@@ -10,6 +11,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.Set;
 
+import org.eclipse.microprofile.graphql.Ignore;
 import org.eclipse.microprofile.graphql.Input;
 import org.eclipse.microprofile.graphql.Name;
 import org.eclipse.microprofile.graphql.NonNull;
@@ -17,6 +19,8 @@ import org.eclipse.microprofile.graphql.Type;
 import org.junit.jupiter.api.Test;
 
 import io.smallrye.graphql.client.typesafe.api.GraphQLClientApi;
+import io.smallrye.graphql.client.typesafe.api.GraphQLClientException;
+import io.smallrye.graphql.client.typesafe.api.OutputOnly;
 
 class ParametersBehavior {
     private final TypesafeGraphQLClientFixture fixture = TypesafeGraphQLClientFixture.load();
@@ -95,6 +99,16 @@ class ParametersBehavior {
         String text;
         int count;
 
+        @OutputOnly
+        String outputOnly;
+
+        @Ignore
+        @SuppressWarnings("unused")
+        String ignored;
+
+        @OutputOnly
+        int outputOnlyInt;
+
         @SuppressWarnings("unused")
         Greeting() {
         }
@@ -107,15 +121,32 @@ class ParametersBehavior {
 
     @Test
     void shouldQueryWithObjectParam() {
-        fixture.returnsData("'say':{'text':'ho','count':3}");
+        fixture.returnsData("'say':{'text':'ho','count':3,'outputOnly':'hip','outputOnlyInt':7}");
         ObjectParamApi api = fixture.build(ObjectParamApi.class);
 
         Greeting greeting = api.say(new Greeting("hi", 5));
 
-        then(fixture.query()).isEqualTo("query say($greet: GreetingInput) { say(greet: $greet) {text count} }");
+        then(fixture.query())
+                .isEqualTo("query say($greet: GreetingInput) { say(greet: $greet) {text count outputOnly outputOnlyInt} }");
         then(fixture.variables()).isEqualTo("{'greet':{'text':'hi','count':5}}");
         then(greeting.text).isEqualTo("ho");
         then(greeting.count).isEqualTo(3);
+        then(greeting.outputOnly).isEqualTo("hip");
+        then(greeting.outputOnlyInt).isEqualTo(7);
+    }
+
+    @Test
+    void shouldFailToCallWhenOutputOnlyIsNotNull() {
+        ObjectParamApi api = fixture.build(ObjectParamApi.class);
+        Greeting input = new Greeting("hi", 5);
+        input.outputOnly = "forbidden";
+
+        Throwable throwable = catchThrowable(() -> api.say(input));
+
+        then(fixture.sent()).isFalse();
+        then(throwable).isInstanceOf(GraphQLClientException.class)
+                .hasMessage("field 'outputOnly' in " + Greeting.class.getName()
+                        + " is only allowed on output but it has a non-primitive value set");
     }
 
     @GraphQLClientApi

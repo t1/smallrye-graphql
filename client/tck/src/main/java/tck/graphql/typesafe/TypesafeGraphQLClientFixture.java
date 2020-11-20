@@ -43,6 +43,8 @@ public interface TypesafeGraphQLClientFixture {
 
     String query();
 
+    boolean sent();
+
     Object sentHeader(String name);
 
     URI endpointUsed();
