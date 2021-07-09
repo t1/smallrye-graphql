@@ -5,7 +5,7 @@
     <parent>
         <groupId>io.smallrye</groupId>
         <artifactId>smallrye-graphql-client-parent</artifactId>
-        <version>1.2.8-SNAPSHOT</version>
+        <version>1.2.9-SNAPSHOT</version>
     </parent>
 
     <artifactId>smallrye-graphql-client-implementation-jaxrs</artifactId>
@@ -43,7 +43,7 @@
         <dependency>
             <groupId>org.jboss.resteasy</groupId>
             <artifactId>resteasy-client</artifactId>
-            <version>4.6.1.Final</version>
+            <version>4.7.0.Final</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
